@@ -1,0 +1,132 @@
+{% load static %}
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="{% static 'images/favicon.ico' %}" type="image/x-icon">
+    <title>YouTube Video Downloader</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f9;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        .container {
+            background: white;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 500px;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        label {
+            font-size: 1.1rem;
+            margin-bottom: 0.5rem;
+            display: block;
+        }
+        input, select, button {
+            width: 100%;
+            padding: 0.8rem;
+            margin-bottom: 1rem;
+            font-size: 1rem;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .message {
+            margin-top: 1rem;
+            text-align: center;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>YouTube Video Downloader</h1>
+    <form id="downloadForm" method='post'>
+        {% csrf_token %}
+        <label for="url">Enter YouTube URL:</label>
+        <input type="text" id="url" name="url" placeholder="https://www.youtube.com/watch?v=..." required>
+
+        <label for="media_type">Select media type:</label>
+        <select id="media_type" name="media_type">
+            <option value="video">Video</option>
+            <option value="audio">Audio</option>
+        </select>
+
+        <button type="submit">Download</button>
+    </form>
+
+    <div id="message" class="message"></div>
+</div>
+
+<script>
+   const form = document.getElementById('downloadForm');
+   const csrf_token = 'ERbjFk4sCuANPgIM4H1WRplE9lr4FpgK2nQUemw8kxaZPDKD6Qpo8zOncIpMumH5'
+   const messageDiv = document.getElementById('message');
+
+form.addEventListener('submit', async function(event) {
+    event.preventDefault();
+
+    const url = document.getElementById('url').value;
+    const media_type = document.getElementById('media_type').value;
+
+    messageDiv.innerHTML = '';
+
+    try {
+        const response = await fetch('http://127.0.0.1:8000/', {
+            method: 'POST',
+
+
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'CSRF-Token': csrf_token },
+            body: JSON.stringify({ url: url,
+                                media_type: media_type })
+        },
+
+        )
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            alert("Download failed: " + errorText);
+            return;
+        }
+
+        const blob = await response.blob();
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        const fileExtension = media_type === 'audio' ? 'mp3' : 'mp4';
+        a.download = `download.${fileExtension}`;
+        a.click();
+
+        messageDiv.innerHTML = '<p style="color:green;">Download started successfully.</p>';
+    } catch (error) {
+        console.error("Fetch error:", error);
+        messageDiv.innerHTML = `<p style="color:red;">An error occurred: ${error.message}</p>`;
+    }
+    });
+</script>
+
+</body>
+</html>
