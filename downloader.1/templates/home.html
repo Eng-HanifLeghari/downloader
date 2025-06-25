@@ -1,10 +1,11 @@
 {% load static %}
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="icon" href="{% static 'images/favicon.ico' %}" type="image/x-icon">
     <title>Video Downloader (YouTube, TikTok, etc.)</title>
+    <link rel="icon" href="{% static 'images/favicon.ico' %}" type="image/x-icon">
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -55,18 +56,10 @@
             background-color: #cccccc;
             cursor: not-allowed;
         }
-        .message {
+        .message, .progress, .download-link {
             margin-top: 1rem;
             text-align: center;
             font-weight: bold;
-        }
-        .progress {
-            margin-top: 1rem;
-            text-align: center;
-        }
-        .download-link {
-            margin-top: 1rem;
-            text-align: center;
         }
         .download-link a {
             background-color: #008CBA;
@@ -79,6 +72,27 @@
     </style>
 </head>
 <body>
+<div class="container">
+    <h1>Video Downloader</h1>
+    <form id="downloadForm" method="POST">
+        {% csrf_token %}
+        <label for="url">Video URL:</label>
+        <input type="text" id="url" name="url" placeholder="Enter video URL" required>
+
+        <label for="media_type">Download As:</label>
+        <select id="media_type" name="media_type">
+            <option value="video">Video</option>
+            <option value="audio">Audio</option>
+        </select>
+
+        <button type="submit" id="downloadBtn">Download</button>
+    </form>
+
+    <div class="message" id="message"></div>
+    <div class="progress" id="progress"></div>
+    <div class="download-link" id="downloadLink"></div>
+</div>
+
 <script>
 const form = document.getElementById('downloadForm');
 const messageDiv = document.getElementById('message');
@@ -99,7 +113,6 @@ form.addEventListener('submit', async function(event) {
     downloadBtn.textContent = 'Processing...';
 
     try {
-        // Start download task
         const response = await fetch('http://127.0.0.1:8000/', {
             method: 'POST',
             headers: {
@@ -125,8 +138,6 @@ form.addEventListener('submit', async function(event) {
         }
 
         progressDiv.innerHTML = '<p>Download started... Please wait</p>';
-        
-        // Poll for task status
         checkTaskStatus(taskId);
 
     } catch (error) {
@@ -145,21 +156,20 @@ async function checkTaskStatus(taskId) {
 
         if (data.status === 'pending') {
             progressDiv.innerHTML = '<p>Processing video... Please wait</p>';
-            setTimeout(() => checkTaskStatus(taskId), 2000); // Check again in 2 seconds
+            setTimeout(() => checkTaskStatus(taskId), 2000);
         } else if (data.status === 'success') {
             progressDiv.innerHTML = '<p style="color:green;">Download completed!</p>';
             downloadLinkDiv.innerHTML = `<a href="${data.download_url}" download>Download File</a>`;
         } else if (data.status === 'failed') {
-            progressDiv.innerHTML = '';
             const errorMsg = data.error || 'Unknown error';
             let displayMsg = errorMsg;
-            
+
             if (errorMsg.includes('rate limit') || errorMsg.includes('Rate limited')) {
                 displayMsg = '⏱️ Rate limited! Please wait a few minutes before trying again.';
             } else if (errorMsg.includes('blocked') || errorMsg.includes('Access blocked')) {
                 displayMsg = '🚫 Access blocked. Try again later or use a different video.';
             }
-            
+
             messageDiv.innerHTML = `<p style="color:red;">Download failed: ${displayMsg}</p>`;
         } else {
             progressDiv.innerHTML = `<p>Status: ${data.status}</p>`;
@@ -171,6 +181,5 @@ async function checkTaskStatus(taskId) {
     }
 }
 </script>
-
 </body>
 </html>
