@@ -142,3 +142,17 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 CELERY_BROKER_URL = 'redis://localhost:6379/0'
 CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
 
+# Video Downloader Settings
+VIDEO_DOWNLOADER = {
+    'MAX_DOWNLOADS_PER_DOMAIN_PER_5MIN': 5,
+    'MAX_CONCURRENT_DOWNLOADS_PER_DOMAIN': 2,
+    'MIN_DELAY_BETWEEN_DOWNLOADS': 10,  # seconds
+    'DOWNLOAD_TIMEOUT': 300,  # 5 minutes
+    'ENABLE_PROXY_ROTATION': False,  # Set to True if you have proxies
+    'PROXIES': [
+        # Add your proxy list here if needed
+        # 'http://proxy1:port',
+        # 'http://proxy2:port',
+    ]
+}
+

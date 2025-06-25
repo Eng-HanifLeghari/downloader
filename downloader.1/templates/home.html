@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" href="{% static 'images/favicon.ico' %}" type="image/x-icon">
-    <title>YouTube Video Downloader</title>
+    <title>Video Downloader (YouTube, TikTok, etc.)</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -14,7 +14,7 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 100vh;
+            min-height: 100vh;
         }
         .container {
             background: white;
@@ -51,38 +51,40 @@
         button:hover {
             background-color: #45a049;
         }
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
         .message {
             margin-top: 1rem;
             text-align: center;
             font-weight: bold;
         }
+        .progress {
+            margin-top: 1rem;
+            text-align: center;
+        }
+        .download-link {
+            margin-top: 1rem;
+            text-align: center;
+        }
+        .download-link a {
+            background-color: #008CBA;
+            color: white;
+            padding: 10px 20px;
+            text-decoration: none;
+            border-radius: 5px;
+            display: inline-block;
+        }
     </style>
 </head>
 <body>
-
-<div class="container">
-    <h1>YouTube Video Downloader</h1>
-    <form id="downloadForm" method='post'>
-        {% csrf_token %}
-        <label for="url">Enter YouTube URL:</label>
-        <input type="text" id="url" name="url" placeholder="https://www.youtube.com/watch?v=..." required>
-
-        <label for="media_type">Select media type:</label>
-        <select id="media_type" name="media_type">
-            <option value="video">Video</option>
-            <option value="audio">Audio</option>
-        </select>
-
-        <button type="submit">Download</button>
-    </form>
-
-    <div id="message" class="message"></div>
-</div>
-
 <script>
-   const form = document.getElementById('downloadForm');
-   const csrf_token = 'ERbjFk4sCuANPgIM4H1WRplE9lr4FpgK2nQUemw8kxaZPDKD6Qpo8zOncIpMumH5'
-   const messageDiv = document.getElementById('message');
+const form = document.getElementById('downloadForm');
+const messageDiv = document.getElementById('message');
+const progressDiv = document.getElementById('progress');
+const downloadLinkDiv = document.getElementById('downloadLink');
+const downloadBtn = document.getElementById('downloadBtn');
 
 form.addEventListener('submit', async function(event) {
     event.preventDefault();
@@ -91,41 +93,83 @@ form.addEventListener('submit', async function(event) {
     const media_type = document.getElementById('media_type').value;
 
     messageDiv.innerHTML = '';
+    progressDiv.innerHTML = '';
+    downloadLinkDiv.innerHTML = '';
+    downloadBtn.disabled = true;
+    downloadBtn.textContent = 'Processing...';
 
     try {
+        // Start download task
         const response = await fetch('http://127.0.0.1:8000/', {
             method: 'POST',
-
-
             headers: {
                 'Content-Type': 'application/json',
                 'Accept': 'application/json',
-                'CSRF-Token': csrf_token },
-            body: JSON.stringify({ url: url,
-                                media_type: media_type })
-        },
-
-        )
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            },
+            body: JSON.stringify({ url: url, media_type: media_type })
+        });
 
         if (!response.ok) {
-            const errorText = await response.text();
-            alert("Download failed: " + errorText);
+            const errorData = await response.json();
+            messageDiv.innerHTML = `<p style="color:red;">Error: ${errorData.message || 'Download failed'}</p>`;
             return;
         }
 
-        const blob = await response.blob();
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        const fileExtension = media_type === 'audio' ? 'mp3' : 'mp4';
-        a.download = `download.${fileExtension}`;
-        a.click();
+        const data = await response.json();
+        const taskId = data.task_id;
 
-        messageDiv.innerHTML = '<p style="color:green;">Download started successfully.</p>';
+        if (!taskId) {
+            messageDiv.innerHTML = '<p style="color:red;">Error: No task ID received</p>';
+            return;
+        }
+
+        progressDiv.innerHTML = '<p>Download started... Please wait</p>';
+        
+        // Poll for task status
+        checkTaskStatus(taskId);
+
     } catch (error) {
         console.error("Fetch error:", error);
         messageDiv.innerHTML = `<p style="color:red;">An error occurred: ${error.message}</p>`;
+    } finally {
+        downloadBtn.disabled = false;
+        downloadBtn.textContent = 'Download';
     }
-    });
+});
+
+async function checkTaskStatus(taskId) {
+    try {
+        const response = await fetch(`http://127.0.0.1:8000/api/download/status/${taskId}/`);
+        const data = await response.json();
+
+        if (data.status === 'pending') {
+            progressDiv.innerHTML = '<p>Processing video... Please wait</p>';
+            setTimeout(() => checkTaskStatus(taskId), 2000); // Check again in 2 seconds
+        } else if (data.status === 'success') {
+            progressDiv.innerHTML = '<p style="color:green;">Download completed!</p>';
+            downloadLinkDiv.innerHTML = `<a href="${data.download_url}" download>Download File</a>`;
+        } else if (data.status === 'failed') {
+            progressDiv.innerHTML = '';
+            const errorMsg = data.error || 'Unknown error';
+            let displayMsg = errorMsg;
+            
+            if (errorMsg.includes('rate limit') || errorMsg.includes('Rate limited')) {
+                displayMsg = '⏱️ Rate limited! Please wait a few minutes before trying again.';
+            } else if (errorMsg.includes('blocked') || errorMsg.includes('Access blocked')) {
+                displayMsg = '🚫 Access blocked. Try again later or use a different video.';
+            }
+            
+            messageDiv.innerHTML = `<p style="color:red;">Download failed: ${displayMsg}</p>`;
+        } else {
+            progressDiv.innerHTML = `<p>Status: ${data.status}</p>`;
+            setTimeout(() => checkTaskStatus(taskId), 2000);
+        }
+    } catch (error) {
+        console.error("Status check error:", error);
+        messageDiv.innerHTML = `<p style="color:red;">Error checking status: ${error.message}</p>`;
+    }
+}
 </script>
 
 </body>
