@@ -1,7 +1,17 @@
-# ... other Dockerfile commands ...
+# ✅ Use official Python image
+FROM python:3.11-slim
 
-RUN apt-get update && apt-get install -y python3-pip && rm -rf /var/lib/apt/lists/*
+# Set working directory inside container
+WORKDIR /downloader
 
-# Now you can run your pip3 install command
+# Copy requirements first
 COPY requirements.txt .
-RUN pip3 install -r requirements.txt
+
+# ✅ Install dependencies
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy the rest of the code
+COPY . .
+
+# Run the app (replace with your actual file if needed)
+CMD ["python", "main.py"]
