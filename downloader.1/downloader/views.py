@@ -6,9 +6,8 @@ from rest_framework.response import Response
 import os
 import glob
 import time
-from .tasks import download_video_task
-from celery.result import AsyncResult
 from django.conf import settings
+import asyncio
 
 
 active_downloads = {}
