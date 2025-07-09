@@ -139,9 +139,6 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 # settings.py
 
-CELERY_BROKER_URL = 'redis://localhost:6379/0'
-CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
-
 # Video Downloader Settings
 VIDEO_DOWNLOADER = {
     'MAX_DOWNLOADS_PER_DOMAIN_PER_5MIN': 5,
